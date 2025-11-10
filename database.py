@@ -35,7 +35,6 @@ def clear_old_promotions(conn, store_name: str):
     try:
         today = datetime.date.today()
         c = conn.cursor()
-        # Изтриваме всички, които НЕ са от днес И са от този магазин
         c.execute("DELETE FROM promotions WHERE store = ? AND scraped_at != ?", (store_name, today))
         conn.commit()
         print(f"[DB] Изчистени са стари промоции за '{store_name}'.")
@@ -49,7 +48,6 @@ def add_promotions(conn, products: List[Dict[str, Any]], store_name: str):
 
     print(f"[DB] Записвам {len(products)} продукта от '{store_name}' в базата данни...")
 
-    # Първо, изчистваме старите данни за този магазин
     clear_old_promotions(conn, store_name)
 
     try:
@@ -73,25 +71,13 @@ def get_recent_promotions(conn, stores: List[str]) -> List[Dict[str, Any]]:
         today = datetime.date.today()
         c = conn.cursor()
 
-        # Базова SQL заявка
         sql = "SELECT name, store FROM promotions WHERE scraped_at = ?"
         params = [today]
 
-        # -----------------------------------------------------------------
-        # ⚠️ НОВА ЛОГИКА ⚠️
-        # -----------------------------------------------------------------
-        # Ако потребителят е подал магазини (напр. ['Kaufland', 'Lidl'])
         if stores:
-            # Генерираме плейсхолдъри (?, ?, ...)
             placeholders = ', '.join(['?'] * len(stores))
-            # Добавяме филтъра към заявката
             sql += f" AND store IN ({placeholders})"
-            # Добавяме магазините към списъка с параметри
             params.extend(stores)
-
-        # Ако 'stores' е празен списък [], тази логика се пропуска
-        # и заявката остава "вземи ВСИЧКО за днес".
-        # -----------------------------------------------------------------
 
         c.execute(sql, params)
 

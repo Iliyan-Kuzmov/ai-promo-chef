@@ -1,18 +1,12 @@
 import database
 import requests
-import sys
 from bs4 import BeautifulSoup
 import google.generativeai as genai
 from typing import List, Dict, Any
 import json
-import re
-import os  # 👈 ДОБАВЕНО
-from dotenv import load_dotenv  # 👈 ДОБАВЕНО
+import os
+from dotenv import load_dotenv
 
-# ===================================================================
-# ⚠️ НОВА ЧАСТ: Конфигуриране на AI при зареждане
-# ===================================================================
-# Зареждаме .env файла ВЕДНАГА
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -39,10 +33,8 @@ def get_kaufland_promotions(db_conn):
     product_list = []
     product_names_seen = set()
 
-    # -----------------------------------------------------------------
-    # ⚠️ ВАЖНО: Тук трябва да сложиш КЛАСА, който ти намери!
-    # -----------------------------------------------------------------
-    THE_CORRECT_CLASS = 'k-product-tile__title'  # 👈 ЗАМЕНИ ТОВА С ТВОЯ РАБОТЕЩ КЛАС
+
+    THE_CORRECT_CLASS = 'k-product-tile__title'
 
     if "product-tile__title" == THE_CORRECT_CLASS:
         print("⚠️ [Scraper] Внимание: Класът за Kaufland е 'product-tile__title'. Ако не работи, смени го в logic.py.")
@@ -85,9 +77,6 @@ def get_lidl_promotions(db_conn):
     return
 
 
-# ===================================================================
-# ЧАСТ 2: AI ЯДРО
-# ===================================================================
 
 def find_available_model() -> str:
     """
@@ -96,7 +85,6 @@ def find_available_model() -> str:
     """
     print("🕵️  [Logic] Проверявам наличните AI модели...")
     try:
-        # ⚠️ Сега тази функция ще работи, защото genai ВЕЧЕ Е конфигуриран
         models = genai.list_models()
         for m in models:
             if 'generateContent' in m.supported_generation_methods:
@@ -108,7 +96,6 @@ def find_available_model() -> str:
 
     except Exception as e:
         print(f"❌ [Logic] Грешка при изброяване на AI модели: {e}")
-        # Препредаваме оригиналната грешка, за да я видим
         raise e
 
 
@@ -117,8 +104,6 @@ try:
     AI_MODEL_NAME = find_available_model()
 except Exception as e:
     print(f"❌ [Logic] КРИТИЧНА ГРЕШКА при стартиране: Не мога да намеря AI модел: {e}")
-    # Не спираме, приложението може да продължи и да покаже грешка в UI
-
 
 def generate_recipe_prompt(promo_products, people, preferences, fridge_items: str):
     """
@@ -130,11 +115,7 @@ def generate_recipe_prompt(promo_products, people, preferences, fridge_items: st
 
     servings_str = str(people)
 
-    # -----------------------------------------------------------------
-    # ⚠️ НОВА ДИНАМИЧНА СЕКЦИЯ ⚠️
-    # -----------------------------------------------------------------
-    # Създаваме секция за хладилника, САМО ако полето не е празно
-    fridge_prompt_section = "" # По подразбиране е празно
+    fridge_prompt_section = ""
     if fridge_items:
         fridge_prompt_section = f"""
     ПРОДУКТИ ОТ ХЛАДИЛНИКА (ЗАДЪЛЖИТЕЛНИ):
@@ -196,10 +177,6 @@ def generate_recipe_prompt(promo_products, people, preferences, fridge_items: st
     return prompt
 
 
-# ===================================================================
-# ЧАСТ 3: ГЛАВНА ФУНКЦИЯ
-# ===================================================================
-
 def get_recipes_for_user(db_conn, people: str, preferences_list: list, stores: list, fridge_items: str) -> Dict[str, Any]:
     """
     Това е главната функция, която изпълнява цялата логика.
@@ -208,11 +185,9 @@ def get_recipes_for_user(db_conn, people: str, preferences_list: list, stores: l
     global AI_MODEL_NAME
 
     if not AI_MODEL_NAME:
-        # Тази грешка вече ще се вижда по-ясно от горния try/except
         raise Exception("AI Моделът не е зареден правилно. Провери 'logic.py' за грешки при стартиране.")
 
     try:
-        # 1. Извличане на продуктите от DB
         print(f"⚡️ [Logic] Извличам продукти от DB за магазини: {stores or 'ВСИЧКИ'}...")
         promo_products = database.get_recent_promotions(db_conn, stores)
 
@@ -221,15 +196,13 @@ def get_recipes_for_user(db_conn, people: str, preferences_list: list, stores: l
 
         print(f"⚡️ [Logic] Намерени {len(promo_products)} продукта в DB.")
 
-        # 2. Форматиране на филтрите
         if not preferences_list:
             preferences_list.append("без специални ограничения")
         preferences_str = ", ".join(preferences_list)
 
-        # 3. Генериране на prompt
         prompt = generate_recipe_prompt(promo_products, people, preferences_str, fridge_items)
 
-        # 4. Извикване на AI в JSON РЕЖИМ
+
         print("🧠 [Logic] Изпращам заявка към AI (в JSON режим)...")
         model = genai.GenerativeModel(AI_MODEL_NAME)
 
@@ -240,7 +213,6 @@ def get_recipes_for_user(db_conn, people: str, preferences_list: list, stores: l
 
         print("✅ [Logic] AI върна JSON отговор.")
 
-        # 5. Парсване на JSON-а в Python речник
         return json.loads(response.text)
 
     except json.JSONDecodeError:
