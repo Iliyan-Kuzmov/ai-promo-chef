@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-text-align: left;8">
+    <title>Kaufland AI Chef</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; background: #f4f4f4; }
+        h1 { color: #d00000; } /* Kaufland Red */
+        .container { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        form > div { margin-bottom: 15px; }
+        label { font-weight: bold; display: block; margin-bottom: 5px; }
+        input[type="number"], select { width: 100px; padding: 8px; }
+        button { background: #d00000; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #a00000; }
+        .result { margin-top: 20px; padding: 15px; background: #fafafa; border: 1px solid #ddd; border-radius: 5px; white-space: pre-wrap; /* Запазва новите редове от AI */ }
+        .loading { font-style: italic; color: #555; }
+        .recipe-card {
+        margin-top: 25px;
+        padding: 20px;
+        background: #fafafa;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+    }
+    .recipe-card h2 {
+        color: #d00000; /* Kaufland Red */
+        margin-top: 0;
+        border-bottom: 2px solid #f0f0f0;
+        padding-bottom: 10px;
+    }
+    .recipe-card h3 {
+        color: #333;
+        margin-top: 20px;
+        margin-bottom: 10px;
+    }
+    .details {
+        display: flex;
+        justify-content: space-between;
+        background: #f0f0f0;
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 0.9em;
+    }
+    .recipe-card ul, .recipe-card ol {
+        padding-left: 20px;
+    }
+    .recipe-card li {
+        margin-bottom: 8px;
+        line-height: 1.5;
+    }
+    .note {
+        font-style: italic;
+        color: #005a9c; /* Lidl Blue */
+        font-weight: bold;
+    }
+    /* ... (другите ти стилове) ... */
+    .fridge-section {
+        background: #fdfcee; /* Лек жълт фон */
+        border: 1px solid #e6dbb9;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .fridge-section label {
+        font-size: 1.1em;
+        color: #333;
+    }
+    #fridge_items {
+        width: 95%; /* Направи го широко */
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 1em;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🍳 AI Готвач (Захранен от Kaufland)</h1>
+
+        <form method="POST">
+            <div class="fridge-section">
+            <label for="fridge_items">Какво имаш в хладилника?</label>
+            <form method="POST" id="recipe-form">
+                <input type="text" id="fridge_items" name="fridge_items"
+                       placeholder="напр: 3 яйца, 1 чушка, малко сирене">
+                </div>
+            <div>
+                <label for="people">За колко души?</label>
+                <input type="number" id="people" name="people" value="2" min="1">
+            </div>
+            <div>
+                <label for="veg">Вегетарианско?</label>
+                <input type="checkbox" id="veg" name="veg" value="yes">
+            </div>
+            <div>
+                <label for="healthy">Здравословно?</label>
+                <input type="checkbox" id="healthy" name="healthy" value="yes">
+            </div>
+
+            <div>
+                <label for="budget">Бюджетно ниво</label>
+                <select id="budget" name="budget">
+                    <option value="Няма значение" selected>Няма значение</option>
+                    <option value="Икономичен">Икономичен (фокус върху зеленчуци, яйца, основни)</option>
+                    <option value="Стандартен">Стандартен (включва месо, сирена и др.)</option>
+                </select>
+            </div>
+            <div>
+            <label>Пазарувай в:</label>
+            <input type="checkbox" id="kaufland" name="stores" value="Kaufland" checked>
+            <label for="kaufland" style="display: inline-block; font-weight: normal;">Kaufland</label>
+            </div>
+
+
+            <div>
+                <label>Алергии / Диета:</label>
+                <input type="checkbox" id="gluten_free" name="preferences" value="Без глутен">
+                <label for="gluten_free" style="display: inline-block; font-weight: normal;">Без глутен</label>
+
+                <input type="checkbox" id="lactose_free" name="preferences" value="Без лактоза" style="margin-left: 15px;">
+                <label for="lactose_free" style="display: inline-block; font-weight: normal;">Без лактоза</label>
+
+                <input type="checkbox" id="low_carb" name="preferences" value="Нисковъглехидратно" style="margin-left: 15px;">
+                <label for="low_carb" style="display: inline-block; font-weight: normal;">Нисковъглехидратно</label>
+            </div>
+
+            <div>
+                <label>Категории:</label>
+                <input type="checkbox" id="quick" name="preferences" value="Бързо (под 20 мин)">
+                <label for="quick" style="display: inline-block; font-weight: normal;">Бързо (под 20 мин)</label>
+
+                <input type="checkbox" id="fasting" name="preferences" value="Постно" style="margin-left: 15px;">
+                <label for="fasting" style="display: inline-block; font-weight: normal;">Постно</label>
+            </div>
+            <button type="submit">Генерирай Рецепти</button>
+        </form>
+
+        
+
+        {% if loading %}
+            <div classs="loading">
+                <p>⏳ Мисля си рецепти... Scraper-ът работи... Моля, изчакай... (това може да отнеме 10-15 секунди)</p>
+            </div>
+        {% endif %}
+
+        {% if recipe_data and recipe_data.recipes %}
+
+        {% for recipe in recipe_data.recipes %}
+        <div class="recipe-card">
+
+
+            <h2>{{ recipe.title }}</h2>
+
+                <div class="details">
+                    <span><strong>Цена:</strong> {{ recipe.price_estimate }}</span>
+                    <span><strong>Порции:</strong> {{ recipe.servings }}</span>
+                    <span><strong>Време:</strong> {{ recipe.prep_time }}</span>
+                </div>
+
+                <h3>Необходими съставки:</h3>
+                <ul>
+                    {% for ingredient in recipe.ingredients %}
+                        <li>
+                            {{ ingredient.item }}
+                            {% if ingredient.note %}
+                                <span class="note">({{ ingredient.note }})</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+
+                <h3>Инструкции (стъпка по стъпка):</h3>
+                <ol>
+                    {% for step in recipe.instructions %}
+                        <li>{{ step }}</li>
+                    {% endfor %}
+                </ol>
+
+            </div>
+        {% endfor %}
+
+    {% endif %}
+
+        {% if error %}
+            <div class="result" style="color: red; background: #fee;">
+                <strong>ГРЕШКА:</strong><br>
+                {{ error }}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
